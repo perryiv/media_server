@@ -4,11 +4,16 @@
   "description": "WebSocket server for media files",
   "main": "main.js",
   "scripts": {
-    "start": "node src/main.js"
+    "start": "node src/main.js",
+    "watch": "watch \"npm run start\" ./ --filter=./watch_filter.js"
   },
   "author": "Perry L Miller IV",
   "license": "MIT",
   "dependencies": {
+    "property-tools": "^0.2.0",
     "ws": "^7.4.4"
+  },
+  "devDependencies": {
+    "watch": "^1.0.2"
   }
 }
