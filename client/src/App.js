@@ -13,10 +13,8 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { getProperty } from "property-tools";
-
-import logo from "./logo.svg";
 import "./App.css";
 
 
@@ -50,41 +48,42 @@ function makeConnection()
 }
 
 
-function App()
+class App extends React.Component
 {
-  const [ connection, setConnection ] = useState ( null );
-
-  useEffect ( () =>
+  constructor ( props )
   {
-    const ws = makeConnection();
-    setConnection ( ws );
-
-    return function cleanup()
-    {
-      console.error ( "In cleanup()" );
-      ws.close();
+    super ( props );
+    this.state = {
+      connection: null
     };
-  }, [] );
+  }
 
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload wow.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-        <p>Connected? { ( ( null != connection ) ? "yes" : "no" ) }</p>
-      </header>
-    </div>
-  );
+  componentDidMount()
+  {
+    this.setState ( { connection: makeConnection() } );
+  }
+
+  componentWillUnmount()
+  {
+    if ( null != this.state.connection )
+    {
+      this.state.connection.close();
+    }
+    this.setState ( { connection: null } );
+  }
+
+  render()
+  {
+    const ws = this.state.connection;
+    const isConnected = ( ( null == ws ) ? false : ( 1 === ws.readyState ) );
+    return (
+      <div className="App">
+        <header className="App-header">
+          <p>Connected? { ( isConnected ? "no" : "yes" ) }</p>
+        </header>
+      </div>
+    );
+  }
 }
 
 export default App;
