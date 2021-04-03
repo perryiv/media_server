@@ -1,24 +1,68 @@
+
+///////////////////////////////////////////////////////////////////////////////
+//
+//  Copyright (c) 2019, Perry L Miller IV
+//  All rights reserved.
+//  MIT License: https://opensource.org/licenses/mit-license.html
+//
+///////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Main file for the server.
+//
+////////////////////////////////////////////////////////////////////////////////
+
 const WebSocket = require ( "ws" );
+const { getProperty } = require ( "property-tools" );
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Get the arguments.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+const port = parseInt ( getProperty ( process.argv, 2, 8080 ) );
+console.log ( "Port:", port );
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Make the server.
+//
+////////////////////////////////////////////////////////////////////////////////
 
 const server = new WebSocket.Server ( {
-  port: 8080,
-  perMessageDeflate: {
-    zlibDeflateOptions: {
-      // See zlib defaults.
-      chunkSize: 1024,
-      memLevel: 7,
-      level: 3
-    },
-    zlibInflateOptions: {
-      chunkSize: 10 * 1024
-    },
-    // Other options settable:
-    clientNoContextTakeover: true, // Defaults to negotiated value.
-    serverNoContextTakeover: true, // Defaults to negotiated value.
-    serverMaxWindowBits: 10, // Defaults to negotiated value.
-    // Below options specified as default values.
-    concurrencyLimit: 10, // Limits zlib concurrency for perf.
-    threshold: 1024 // Size (in bytes) below which messages
-    // should not be compressed.
-  }
+  port: port,
+  perMessageDeflate: false
+} );
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Called when there is a connection.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+server.on ( "connection", function connection ( ws )
+{
+  ws.on ( "message", function incoming ( message )
+  {
+    console.log ( "received: %s", message );
+  } );
+
+  ws.send ( "This is sent by the server" );
+} );
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Called when the connection is closed.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+server.on ( "close", function close()
+{
+  console.log ( "Connection closed" );
 } );
