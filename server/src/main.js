@@ -14,7 +14,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const WebSocket = require ( "ws" );
-const { getProperty } = require ( "property-tools" );
+const { getProperty, requireProperty } = require ( "property-tools" );
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Counter for the socket connections.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+let nextID = 0;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -24,7 +33,7 @@ const { getProperty } = require ( "property-tools" );
 ////////////////////////////////////////////////////////////////////////////////
 
 const port = parseInt ( getProperty ( process.argv, 2, 8080 ) );
-console.log ( "Port:", port );
+console.log ( "Using port", port );
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,24 +54,113 @@ const server = new WebSocket.Server ( {
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-server.on ( "connection", function connection ( ws )
+server.on ( "connection", function connection ( socket )
 {
-  ws.on ( "message", function incoming ( message )
+  // Make sure this property is not taken.
+  if ( "isAlive" in socket )
   {
-    console.log ( "received: %s", message );
+    throw new Error ( "Use a property name other than isAlive" );
+  }
+
+  // Initialize.
+  socket.id = nextID++;
+  socket.isAlive = true;
+
+  console.log ( "In connection handler, socket id:", socket.id );
+
+  // This gets called when the client responds to a ping.
+  socket.on ( "pong", function()
+  {
+    console.log ( "In pong() handler, socket id:", this.id );
+    this.isAlive = true;
+  }.bind ( socket ) );
+
+  // This gets called when the client is closed.
+  socket.on ( "close", function()
+  {
+    console.log ( "In close() handler, socket id:", this.id );
+    this.isAlive = false;
+  }.bind ( socket ) );
+
+  // This gets called when we receive a message.
+  socket.on ( "message", function ( message )
+  {
+    console.log ( "Received message:", message );
   } );
 
-  ws.send ( "This is sent by the server" );
+  // Let the client know it is connected.
+  socket.send ( "Connected to the server at " + Date.now() );
 } );
 
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  Called when the connection is closed.
+//  A function that does nothing.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+function doNothing()
+{
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Ping all the clients.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+function pingAllClients()
+{
+  // For each client ...
+  server.clients.forEach ( function each ( socket )
+  {
+    console.log ( "In pingAllClients(), socket id:", socket.id );
+
+    // Is it no longer living?
+    if ( false === requireProperty ( socket, "isAlive" ) )
+    {
+      console.log ( "In pingAllClients(), terminating" );
+
+      // It's not alive so terminate it.
+      socket.terminate();
+    }
+
+    // Otherwise, it is alive.
+    else
+    {
+      console.log ( "In pingAllClients(), still alive" );
+
+      // This will get reset to true in the "pong" handler.
+      socket.isAlive = false;
+
+      // Ping the client. If everything is connected this will result
+      // in the "pong" handler being called.
+      socket.ping ( doNothing );
+    }
+  } );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Ping all the clients every few seconds.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+const interval = setInterval ( pingAllClients, 3000 );
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  TODO: Is this function ever called?
 //
 ////////////////////////////////////////////////////////////////////////////////
 
 server.on ( "close", function close()
 {
-  console.log ( "Connection closed" );
+  // We don't want to ping the clients any more.
+  clearInterval ( interval );
+
+  console.log ( "In server close handler" );
 } );

@@ -9,44 +9,22 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  Main file for the server.
+//  Client application class.
 //
 ////////////////////////////////////////////////////////////////////////////////
 
 import React from "react";
 import { getProperty } from "property-tools";
+import Socket from "./Socket.js";
+
 import "./App.css";
 
 
-function makeConnection()
-{
-  const ws = new WebSocket ( "ws://" + window.location.hostname + ":" + 8080 );
-
-  ws.onopen = function ( event )
-  {
-    console.log ( "WebSocket is open now:", event );
-    ws.send ( Date.now() );
-  };
-
-  ws.onclose = function close ( event )
-  {
-    console.log ( "WebSocket is disconnected:", event );
-  };
-
-  ws.onerror = function ( event )
-  {
-    console.error ( "WebSocket error observed:", event );
-  };
-
-  ws.onmessage = function incoming ( event )
-  {
-    const data = getProperty ( event, "data", null );
-    console.log ( "WebSocket message received:", data );
-  };
-
-  return ws;
-}
-
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Constructor.
+//
+////////////////////////////////////////////////////////////////////////////////
 
 class App extends React.Component
 {
@@ -54,18 +32,27 @@ class App extends React.Component
   {
     super ( props );
     this.state = {
+      token: 0,
       connection: null
     };
   }
 
   componentDidMount()
   {
-    this.setState ( { connection: makeConnection() } );
+    const connection = new Socket ( {
+      onOpen: this._onOpen.bind ( this ),
+      onClose: this._onClose.bind ( this ),
+      onError: this._onError.bind ( this ),
+      onMessage: this._onMessage.bind ( this )
+    } );
+    connection.open();
+
+    this.setState ( { connection: connection } );
   }
 
   componentWillUnmount()
   {
-    if ( null != this.state.connection )
+    if ( this.state.connection )
     {
       this.state.connection.close();
     }
@@ -74,16 +61,99 @@ class App extends React.Component
 
   render()
   {
-    const ws = this.state.connection;
-    const isConnected = ( ( null == ws ) ? false : ( 1 === ws.readyState ) );
     return (
       <div className="App">
         <header className="App-header">
-          <p>Connected? { ( isConnected ? "no" : "yes" ) }</p>
+          <p>Connected? { ( this.isConnected() ? "yes" : "no" ) }</p>
         </header>
       </div>
     );
   }
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Return true if we are connected to the server.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+App.prototype.isConnected = function()
+{
+  const connection = this.state.connection;
+  return ( ( connection ) ? connection.isOpen() : false );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Request a render.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+App.prototype.requesRender = function()
+{
+  this.setState ( { token: ( this.state.token + 1 ) } );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Called when the connection to the server is opened.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+App.prototype._onOpen = function()
+{
+  console.log ( "WebSocket opened" );
+  this.requesRender();
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Called when the connection to the server is closed.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+App.prototype._onClose = function()
+{
+  console.log ( "WebSocket closed" );
+  this.requesRender();
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Called when there is an error with the connection to the server.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+App.prototype._onError = function()
+{
+  console.log ( "WebSocket error" );
+  this.requesRender();
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  Called when there is a message.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+App.prototype._onMessage = function ( event )
+{
+  const data = getProperty ( event, "data", null );
+  console.log ( "WebSocket message received:", data );
+  this.requesRender();
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  The end of this module.
+//
+////////////////////////////////////////////////////////////////////////////////
 
 export default App;
