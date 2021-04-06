@@ -10,6 +10,8 @@
   "author": "Perry L Miller IV",
   "license": "MIT",
   "dependencies": {
+    "filehound": "^1.17.4",
+    "lodash": "^4.17.21",
     "property-tools": "^0.2.0",
     "sqlite3": "^5.0.2",
     "ws": "^7.4.4",
